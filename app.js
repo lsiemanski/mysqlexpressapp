@@ -1,187 +1,58 @@
-const mysql = require('mysql')
 const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
 
+const db = require('./dbnames_constants')
+const ops = require('./db_operations')
+const statement = require('./server_statements')
+const utils = require('./utils')
+
 const port = process.env.PORT || 8080
 
 app.listen(port, () => {
-    console.log('Listening on port ', port)
-})
-
-let pool = mysql.createPool({
-    user: 'root',
-    password: 'password',
-    database: 'MieszkankoDB',
-    host: '34.67.172.88'
+    console.log('Listening on port', port)
 })
 
 app.get('/apartments', async (req, res) => {
-    let retVal;
-    try {
-        const apartments = await getApartments()
-        if(apartments) {
-            retVal = { status: 'success', data: apartments}
-        }
-        else {
-            res.status(404)
-            retVal = {status: 'fail'}
-        }
-
-    } catch(ex) {
-        res.status(500)
-        retVal = {status: 'error', message: ex}
-    }
-
-    res.end(JSON.stringify(retVal))
+    await statement.performSelectStatement(res, true, async() => {
+        return await ops.getAllFromTable(db.MIESZKANIE_TABLE)
+    })
 })
 
 app.get('/apartments/:id', async (req, res) => {
-    let retVal;
-    try {
-        const apartment = await getApartment(req.params.id)
-        if(apartment) {
-            retVal = {status: 'success', data: apartment}
-        }
-        else {
-            res.status(404)
-            retVal = {status: 'fail', message: 'No records found!' }
-        }
-
-    } catch(ex) {
-        res.status(500)
-        retVal = {status: 'error', message: ex}
-    }
-
-    res.end(JSON.stringify(retVal))
+    await statement.performSelectStatement(res, false, async() => {
+        return await ops.getById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_ID, req.params.id)
+    })
 })
 
 app.post('/apartments', async (req, res) => {
-    let retVal
-    try {
-        const result = await createApartment(req.body)
-        const apartment = await getApartment(result.insertId)
-        retVal = {status: 'success', data: apartment}
-    }
-    catch(ex) {
-        res.status(500)
-        retVal = {status: 'error', message: ex}
-    }
+    let apartment = req.body
+    apartment.KodDostepu = await utils.generateApartmentKey()
 
-    res.end(JSON.stringify(retVal))
+    await statement.performInsertStatement(res, async() => {
+        return await ops.insert(db.MIESZKANIE_TABLE, apartment)
+    }, async(id) => {
+        return await ops.getById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_ID, id)
+    })
 })
 
 app.put('/apartments/:id', async (req, res) => {
-    let retVal
-    try {
-        const result = await updateApartment(req.body, req.params.id)
-        if(result.affectedRows == 0) {
-            retVal = { status: 'fail', message: 'No records found!' }
-        } else {
-            const apartment = await getApartment(req.params.id)
-            retVal = {status: 'success', data: apartment}
-        }
-    }
-    catch(ex) {
-        res.status(500)
-        retVal = { status: 'error', message: ex }
+    if(req.body.KodDostepu !== undefined) {
+        res.end(JSON.stringify({ status: "fail", message: "Invalid request body: cannot change KodDostepu" }))
+        return
     }
 
-    res.end(JSON.stringify(retVal))
+    await statement.performUpdateStatement(res, async() => {
+        return await ops.update(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_ID, req.params.id, req.body)
+    }, async() => {
+        return await ops.getById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_ID, req.params.id)
+    })
 })
 
 app.delete('/apartments/:id', async (req, res) => {
-    let retVal
-    try {
-        const result = await deleteApartment(req.params.id)
-        if(result.affectedRows == 0) {
-            retVal = { status: 'fail', message: 'No records found!' }
-        }
-        else {
-            retVal = { status: 'success' }
-        }
-    }
-    catch(ex) {
-        res.status(500)
-        retVal = {status: 'error', message: ex}
-    }
-
-    res.end(JSON.stringify(retVal))
+    await statement.performDeleteStatement(res, async () => {
+        return await ops.deleteById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_ID, req.params.id)
+    })
 })
 
-async function getApartments() {
-    return new Promise((resolve, reject) => {
-        const sql = 'SELECT * FROM Mieszkanie'
-        pool.query(sql, (err, results) => {
-            if(err) {
-                console.error(err)
-                reject(err)
-            }
-            else {
-                resolve(results)
-            }
-        })
-    })
-}
-
-async function getApartment(id) {
-    return new Promise((resolve, reject) => {
-        const sql = 'SELECT * FROM Mieszkanie WHERE MieszkanieID = ?'
-        pool.query(sql, id, (err, results) => {
-            if(err) {
-                console.error(err)
-                reject(err)
-            }
-            else {
-                resolve(results[0])
-            }
-        })
-    })
-}
-
-async function createApartment(apartment) {
-    return new Promise((resolve, reject) => {
-        apartment.KodDostepu = 'ABCDEF'
-        const sql = 'INSERT INTO Mieszkanie SET ?'
-        pool.query(sql, apartment, (err, results) => {
-            if(err) {
-                console.error(err)
-                reject(err)
-            }
-            else {
-                resolve(results)
-            }
-        })
-    })
-}
-
-async function updateApartment(apartment, id) {
-    return new Promise((resolve, reject) => {
-        const sql = 'UPDATE Mieszkanie SET ? WHERE MieszkanieID = ?'
-        pool.query(sql, [apartment, id], (err, results) => {
-            if(err) {
-                console.error(err)
-                reject(err)
-            }
-            else {
-                resolve(results)
-            }
-        })
-    })
-}
-
-async function deleteApartment(id) {
-    return new Promise((resolve, reject) => {
-        const sql = 'DELETE FROM Mieszkanie WHERE MieszkanieID = ?'
-        pool.query(sql, id, (err, results) => {
-            if(err) {
-                console.error(err)
-                reject(err)
-            }
-            else {
-                resolve(results)
-            }
-        })
-    })
-}
