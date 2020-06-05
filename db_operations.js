@@ -1,9 +1,9 @@
 const pool = require('./config').pool
 
 module.exports = {
-    getAllFromTable: async function(tableName) {
+    getAllFromTable: async function (tableName) {
         return new Promise((resolve, reject) => {
-            const sql = 'SELECT * FROM ' + tableName
+            const sql = `SELECT * FROM ${tableName}`;
             pool.query(sql, (err, results) => {
                 if (err) {
                     console.error(err)
@@ -14,53 +14,36 @@ module.exports = {
             })
         })
     },
-    getById: async function(tableName, idColumnName, id) {
+    getById: async function (tableName, idColumnName, id) {
         return new Promise((resolve, reject) => {
-            const sql = 'SELECT * FROM ' + tableName + ' WHERE ' + idColumnName + ' = ?'
+            const sql = `SELECT * FROM ${tableName} WHERE ${idColumnName} = ?`
             pool.query(sql, id, (err, results) => {
-                if(err) {
+                if (err) {
                     console.error(err)
                     reject(err)
-                }
-                else {
+                } else {
                     resolve(results)
                 }
             })
         })
     },
-    insert: async function(tableName, data) {
+    insert: async function (tableName, data) {
         return new Promise((resolve, reject) => {
-            const sql = 'INSERT INTO ' + tableName + ' SET ?'
+            const sql = `INSERT INTO ${tableName} SET ?`
             pool.query(sql, data, (err, results) => {
-                if(err) {
+                if (err) {
                     console.error(err)
                     reject(err)
-                }
-                else {
+                } else {
                     resolve(results)
                 }
             })
         })
     },
-    update: async function(tableName, idColumnName, id, data) {
+    update: async function (tableName, idColumnName, id, data) {
         return new Promise((resolve, reject) => {
-            const sql = 'UPDATE ' + tableName + ' SET ? WHERE ' + idColumnName + ' = ?'
+            const sql = `UPDATE ` + tableName + ` SET ? WHERE ` + idColumnName + ` = ?`
             pool.query(sql, [data, id], (err, results) => {
-                if(err) {
-                    console.error(err)
-                    reject(err)
-                }
-                else {
-                    resolve(results)
-                }
-            })
-        })
-    },
-    deleteById: async function(tableName, idColumnName, id) {
-        return new Promise((resolve, reject) => {
-            const sql = 'DELETE FROM ' + tableName + ' WHERE ' + idColumnName + ' = ?'
-  
-            pool.query(sql, id, (err, results) => {
                 if (err) {
                     console.error(err)
                     reject(err)
@@ -70,13 +53,9 @@ module.exports = {
             })
         })
     },
-    getTasksForApartmentAndUser: async function(idColumnName, id) {
+    deleteById: async function (tableName, idColumnName, id) {
         return new Promise((resolve, reject) => {
-            const sql = 'SELECT *' + 
-            'FROM Obowiazek INNER JOIN Przydzial ON Obowiazek.ObowiazekID = Przydzial.ObowiazekID ' +
-            'INNER JOIN MiejsceWKolejce ON Przydzial.PrzydzialID = MiejsceWKolejce.PrzydzialID ' + 
-            'INNER JOIN MieszkaniecWMieszkaniu ON MieszkaniecWMieszkaniu.MieszkaniecWMieszkaniuID = MiejsceWKolejce.MieszkaniecWMieszkaniuID ' + 
-            'WHERE ' + idColumnName + '= ?'
+            const sql = `DELETE FROM ` + tableName + ` WHERE ` + idColumnName + ` = ?`
 
             pool.query(sql, id, (err, results) => {
                 if (err) {
@@ -88,12 +67,13 @@ module.exports = {
             })
         })
     },
-    getShoppingList: async function(id) {
+    getTasksForApartmentOrUser: async function (idColumnName, id) {
         return new Promise((resolve, reject) => {
-            const sql = 'SELECT Wpis.ProduktID, Nazwa, Ilosc, Jednostka ' +
-            'FROM Wpis INNER JOIN Produkt ' +
-            'ON Wpis.ProduktID = Produkt.ProduktID '
-            'WHERE MieszkanieID ' + ' = ?'
+            const sql = `SELECT * ` +
+                `FROM Obowiazek INNER JOIN Przydzial ON Obowiazek.ObowiazekID = Przydzial.ObowiazekID ` +
+                `INNER JOIN MiejsceWKolejce ON Przydzial.PrzydzialID = MiejsceWKolejce.PrzydzialID ` +
+                `INNER JOIN MieszkaniecWMieszkaniu ON MieszkaniecWMieszkaniu.MieszkaniecWMieszkaniuID = MiejsceWKolejce.MieszkaniecWMieszkaniuID ` +
+                `WHERE ` + idColumnName + `= ?`;
 
             pool.query(sql, id, (err, results) => {
                 if (err) {
@@ -105,16 +85,51 @@ module.exports = {
             })
         })
     },
-    getByName: async function(tableName, columnName, recordName) {
+    getShoppingList: async function (id) {
         return new Promise((resolve, reject) => {
-            const sql = 'SELECT * FROM ' + tableName +' WHERE ' + columnName + '= ?';
+            const sql = `SELECT Wpis.ProduktID, Nazwa, Ilosc, Jednostka ` +
+                `FROM Wpis INNER JOIN Produkt ` +
+                `ON Wpis.ProduktID = Produkt.ProduktID `
+            `WHERE MieszkanieID ` + ` = ?`
 
-            pool.query(sql, recordName, (err, results) => {
-                if(err) {
+            pool.query(sql, id, (err, results) => {
+                if (err) {
                     console.error(err)
                     reject(err)
+                } else {
+                    resolve(results)
                 }
-                else {
+            })
+        })
+    },
+    getUsersForApartment: async function (id) {
+        return new Promise((resolve, reject) => {
+            const sql = `SELECT Mieszkaniec.Login, MieszkaniecWMieszkaniuID ` +
+                `FROM Mieszkaniec ` +
+                `INNER JOIN MieszkaniecWMieszkaniu ON Mieszkaniec.MieszkaniecID = MieszkaniecWMieszkaniu.MieszkaniecID ` +
+                ` WHERE MieszkaniecWMieszkaniu.MieszkanieID = ?`
+
+            pool.query(sql, id, (err, results) => {
+                if (err) {
+                    console.error(err)
+                    reject(err)
+                } else {
+                    resolve(results)
+                }
+            })
+        })
+    },
+    getAllocationForTask: async function (id) {
+        return new Promise((resolve, reject) => {
+            const sql = `SELECT MiejsceWkolejce.PrzydzialID, Przydzial.AktualneMiejsceWCyklu, MiejsceWKolejce.Miejsce FROM MiejsceWKolejce ` +
+                `INNER JOIN Przydzial ON MiejsceWkolejce.PrzydzialID = Przydzial.PrzydzialID ` +
+                `WHERE Przydzial.ObowiazekID = ?`
+
+            pool.query(sql, id, (err, results) => {
+                if (err) {
+                    console.error(err)
+                    reject(err)
+                } else {
                     resolve(results)
                 }
             })
