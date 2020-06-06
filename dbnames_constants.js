@@ -5,6 +5,8 @@ module.exports = {
     MIEJSCE_W_KOLEJCE_TABLE_ID: "MiejsceWKolejceID",
     MIESZKANIEC_TABLE: "Mieszkaniec",
     MIESZKANIEC_TABLE_ID: "MieszkaniecID",
+    MIESZKANIE_TABLE_KOD: "KodDostepu",
+    MIESZKANIEC_TABLE_LOGIN: "Login",
     MIESZKANIEC_W_MIESZKANIU_TABLE: "MieszkaniecWMieszkaniu",
     MIESZKANIEC_W_MIESZKANIU_TABLE_ID: "MieszkaniecWMieszkaniuID",
     OBOWIAZEK_TABLE: "Obowiazek",

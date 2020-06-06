@@ -6,6 +6,8 @@ app.use(bodyParser.json())
 const db = require('./dbnames_constants')
 const ops = require('./db_operations')
 const utils = require('./utils')
+const jwt = require('jsonwebtoken')
+const config = require('./config')
 
 const port = process.env.PORT || 8080
 
@@ -17,7 +19,7 @@ app.listen(port, () => {
 /**
  * Get all apartments data.
  */
-app.get('/apartments', async (req, res) => {
+app.get('/apartments', utils.verifyToken, async (req, res) => {
     try {
         const apartments = await ops.getAllFromTable(db.MIESZKANIE_TABLE);
 
@@ -35,7 +37,7 @@ app.get('/apartments', async (req, res) => {
 /**
  * Get a specific apartment data.
  */
-app.get('/apartments/:id', async (req, res) => {
+app.get('/apartments/:id', utils.verifyToken, async (req, res) => {
     try {
         const apartment = await ops.getById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_ID, req.params.id);
 
@@ -53,27 +55,36 @@ app.get('/apartments/:id', async (req, res) => {
 /**
  * Insert apartment data.
  */
-app.post('/apartments', async (req, res) => {
+app.post('/apartments', utils.verifyToken, async (req, res) => {
     const {
         Nazwa
     } = req.body;
+
     const apartment = {
         Nazwa,
         KodDostepu: await utils.generateApartmentKey()
     };
 
     try {
-        await ops.insert(db.MIESZKANIE_TABLE, apartment);
+        const {
+            insertId
+        } = await ops.insert(db.MIESZKANIE_TABLE, apartment);
 
-        res.sendStatus(200);
+        const resultApartment = await ops.getById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_ID, insertId)
+
+        res.status(200).send({
+            data: resultApartment
+        });
+
     } catch (err) {
+        console.log(err)
         res.status(500).send(err)
     }
 })
 /**
  * Update apartment data
  */
-app.put('/apartments/:id', async (req, res) => {
+app.put('/apartments/:id', utils.verifyToken, async (req, res) => {
     if (req.body.KodDostepu) {
         res.status(400).send("Invalid request body: cannot change KodDostepu");
     }
@@ -92,7 +103,7 @@ app.put('/apartments/:id', async (req, res) => {
 /**
  * Delete specific apartment data.
  */
-app.delete('/apartments/:id', async (req, res) => {
+app.delete('/apartments/:id', utils.verifyToken, async (req, res) => {
     try {
         const result = await ops.deleteById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_ID, req.params.id);
         if (!result.affectedRows) {
@@ -109,7 +120,7 @@ app.delete('/apartments/:id', async (req, res) => {
 /**
  * Get all events data for a specific apartment.
  */
-app.get('/events/:apt_id', async (req, res) => {
+app.get('/events/:apt_id', utils.verifyToken, async (req, res) => {
     try {
         const events = await ops.getById(db.WYDARZENIE_TABLE, db.MIESZKANIE_TABLE_ID, req.params.apt_id)
 
@@ -128,7 +139,7 @@ app.get('/events/:apt_id', async (req, res) => {
 /**
  * Insert event data for a specific apartment.
  */
-app.post('/events/:apt_id', async (req, res) => {
+app.post('/events/:apt_id', utils.verifyToken, async (req, res) => {
     const event = {
         ...req.body,
         MieszkanieID: req.params.apt_id
@@ -146,7 +157,7 @@ app.post('/events/:apt_id', async (req, res) => {
 /**
  * Update specific event.
  */
-app.put('/events/:apt_id/:event_id', async (req, res) => {
+app.put('/events/:apt_id/:event_id', utils.verifyToken, async (req, res) => {
     const {
         MieszkanieID
     } = req.body
@@ -167,7 +178,7 @@ app.put('/events/:apt_id/:event_id', async (req, res) => {
 /**
  * Delete specific event data
  */
-app.delete('/events/:event_id', async (req, res) => {
+app.delete('/events/:event_id', utils.verifyToken, async (req, res) => {
     try {
         const result = await ops.deleteById(db.WYDARZENIE_TABLE, db.WYDARZENIE_TABLE_ID, req.params.event_id)
         if (!result.affectedRows) {
@@ -185,7 +196,7 @@ app.delete('/events/:event_id', async (req, res) => {
 /**
  * Get all products data.
  */
-app.get('/products', async (req, res) => {
+app.get('/products', utils.verifyToken, async (req, res) => {
     try {
         const products = await ops.getAllFromTable(db.PRODUKT_TABLE)
 
@@ -204,7 +215,7 @@ app.get('/products', async (req, res) => {
 /**
  * Get shopping list for a specific apartment
  */
-app.get('/shopping/:apt_id', async (req, res) => {
+app.get('/shopping/:apt_id', utils.verifyToken, async (req, res) => {
     try {
         const shoppingList = await ops.getShoppingList(req.params.apt_id)
 
@@ -223,7 +234,7 @@ app.get('/shopping/:apt_id', async (req, res) => {
 /**
  * Insert new product on a shopping list
  */
-app.post('/shopping/:apt_id', async (req, res) => {
+app.post('/shopping/:apt_id', utils.verifyToken, async (req, res) => {
     const {
         MieszkaniecID,
         Ilosc,
@@ -253,7 +264,7 @@ app.post('/shopping/:apt_id', async (req, res) => {
 /**
  * Update shopping list item
  */
-app.put('/shopping/:apt_id/:item_id', async (req, res) => {
+app.put('/shopping/:apt_id/:item_id', utils.verifyToken, async (req, res) => {
     const {
         MieszkaniecID,
         Ilosc,
@@ -286,7 +297,7 @@ app.put('/shopping/:apt_id/:item_id', async (req, res) => {
 /**
  * Delete from shopping list
  */
-app.delete('/shopping/:item_id', async (req, res) => {
+app.delete('/shopping/:item_id', utils.verifyToken, async (req, res) => {
     try {
         const item = await ops.getById(db.WPIS_TABLE, db.WPIS_TABLE_ID, req.params.item_id)
 
@@ -307,7 +318,7 @@ app.delete('/shopping/:item_id', async (req, res) => {
 /**
  * Select all tasks data.
  */
-app.get('/tasks', async (req, res) => {
+app.get('/tasks', utils.verifyToken, async (req, res) => {
     try {
         const tasks = await ops.getAllFromTable(db.OBOWIAZEK_TABLE)
 
@@ -326,7 +337,7 @@ app.get('/tasks', async (req, res) => {
 /**
  * Select all tasks for a specific apartment.
  */
-app.get('/tasks/:apt_id', async (req, res) => {
+app.get('/tasks/:apt_id', utils.verifyToken, async (req, res) => {
     try {
         const tasks = await ops.getTasksForApartmentOrUser(db.MIESZKANIE_TABLE_ID, req.params.apt_id)
 
@@ -345,7 +356,7 @@ app.get('/tasks/:apt_id', async (req, res) => {
  * Select all tasks for a specific user
  */
 // Notice, that the url is task not tasks!
-app.get('/task/:user_id', async (req, res) => {
+app.get('/task/:user_id', utils.verifyToken, async (req, res) => {
     try {
         const tasks = await ops.getTasksForApartmentOrUser(db.MIESZKANIEC_W_MIESZKANIU_TABLE + '.' + db.MIESZKANIEC_W_MIESZKANIU_TABLE_ID, req.params.user_id)
 
@@ -363,7 +374,7 @@ app.get('/task/:user_id', async (req, res) => {
 /**
  * Insert new task
  */
-app.post('/tasks', async (req, res) => {
+app.post('/tasks', utils.verifyToken, async (req, res) => {
     const {
         Opis,
         Powtarzalnosc,
@@ -404,7 +415,7 @@ app.post('/tasks', async (req, res) => {
  * Update AktualneMiejsceWCyklu.
  * task_id means ObowiazekID.
  */
-app.put('/tasks/:task_id', async (req, res) => {
+app.put('/tasks/:task_id', utils.verifyToken, async (req, res) => {
     const {
         AktualneMiejsceWCyklu
     } = req.body
@@ -428,7 +439,7 @@ app.put('/tasks/:task_id', async (req, res) => {
  * task_id means ObowiazekID
  * Works, but needs improvement, because it doesn't return the right code, but an empty array.
  */
-app.delete('/tasks/:task_id', async (req, res) => {
+app.delete('/tasks/:task_id', utils.verifyToken, async (req, res) => {
     try {
         const taskAllocation = await ops.getById(db.PRZYDZIAL_TABLE, db.OBOWIAZEK_TABLE_ID, req.params.task_id)
 
@@ -456,7 +467,7 @@ app.delete('/tasks/:task_id', async (req, res) => {
 /**
  * Select users login and id in flat for a specific apartment
  */
-app.get('/users/:apt_id', async (req, res) => {
+app.get('/users/:apt_id', utils.verifyToken, async (req, res) => {
     try {
         const users = await ops.getUsersForApartment(req.params.apt_id)
 
@@ -467,6 +478,135 @@ app.get('/users/:apt_id', async (req, res) => {
         } else {
             res.sendStatus(404);
         }
+    } catch (err) {
+        res.status(500).send(err)
+    }
+})
+
+// REGISTRATION
+/**
+ * Register user and assign token
+ */
+app.post('/users', async (req, res) => {
+    let {
+        Login,
+        Haslo,
+        Email
+    } = req.body
+
+    Haslo = utils.generatePassword(req.body.Haslo)
+    try {
+        const {
+            insertId
+        } = await ops.insert(db.MIESZKANIEC_TABLE, {
+            Login,
+            Haslo,
+            Email
+        })
+
+        const token = jwt.sign({ id: insertId }, config.secretKey, {
+            expiresIn: "30 days"
+        })
+
+        res.status(200)
+        res.send({ 
+            auth: true, 
+            token: token
+        })
+    } catch (err) {
+        res.status(500).send(err)
+    }
+    
+})
+
+/**
+ * Token testing
+ */
+app.get('/tokenTest', utils.verifyToken, async (req, res) => {
+    const token = req.headers['x-access-token']
+    if(!token)
+        return res.status(401).send({
+            auth: false,
+            message: 'No token provided!'
+        })
+    
+    jwt.verify(token, config.secretKey, {}, (err, decoded) => {
+        if(err)
+            return res.status(500).send({
+                auth: false,
+                message: 'Failed to authenticate token'
+            })
+        
+        res.status(200).send(decoded)
+    })
+})
+
+// LOGIN
+/**
+ * Login user and get token
+ */
+app.post('/login', async (req, res) => {
+    const {
+        Login,
+        Haslo
+    } = req.body
+
+    try {
+        const user = await ops.getById(db.MIESZKANIEC_TABLE, db.MIESZKANIEC_TABLE_LOGIN, Login)
+
+        if(user.length === 0)
+            return res.status(404).send({
+                auth: false,
+                message: "User not found"
+            })
+
+        if(!utils.comparePasswords(Haslo, user[0].Haslo))
+            return res.status(401).send({
+                auth: false,
+                message: "Incorrect password"
+            })
+
+        const token = jwt.sign({ id: user[0].MieszkaniecID }, config.secretKey, {
+            expiresIn: "30 days"
+        })
+
+        res.send({
+            auth: true,
+            token: token
+        })
+
+    } catch(err) {
+        res.status(500).send({
+            auth: false,
+            message: err
+        })
+    }
+})
+
+// JOIN APARTMENT
+/**
+ * User joining apartment using the access code
+ */
+app.post('/apartments/join', utils.verifyToken, async (req, res) => {
+    const {
+        KodDostepu,
+        MieszkaniecID
+    } = req.body
+
+    try {
+        const resultMieszkanie = await ops.getById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_KOD, KodDostepu)
+
+        if(resultMieszkanie.length === 0)
+            res.sendStatus(404)
+
+
+        await ops.insert(db.MIESZKANIEC_W_MIESZKANIU_TABLE, {
+            MieszkaniecID: MieszkaniecID,
+            MieszkanieID: resultMieszkanie[0].MieszkanieID
+        })
+        
+        res.status(200).send(resultMieszkanie)
+
     } catch (err) {
         res.status(500).send(err)
     }

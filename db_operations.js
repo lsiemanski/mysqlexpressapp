@@ -89,7 +89,7 @@ module.exports = {
         return new Promise((resolve, reject) => {
             const sql = `SELECT Wpis.ProduktID, Nazwa, Ilosc, Jednostka ` +
                 `FROM Wpis INNER JOIN Produkt ` +
-                `ON Wpis.ProduktID = Produkt.ProduktID `
+                `ON Wpis.ProduktID = Produkt.ProduktID ` +
             `WHERE MieszkanieID ` + ` = ?`
 
             pool.query(sql, id, (err, results) => {
