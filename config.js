@@ -4,6 +4,6 @@ module.exports = {
         user: 'root',
         password: 'password',
         database: 'MieszkankoDB',
-        host: '34.67.172.88'
+        host: '35.202.197.124'
     })
 }
