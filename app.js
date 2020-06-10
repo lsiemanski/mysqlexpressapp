@@ -372,7 +372,8 @@ app.get('/task/:user_id', utils.verifyToken, async (req, res) => {
     }
 })
 /**
- * Insert new task
+ * Insert new task.
+ * MieszkaniecWMieszkaniuID jest tablica, niewazne czy z jednym czy z n elementami
  */
 app.post('/tasks', utils.verifyToken, async (req, res) => {
     const {
@@ -392,10 +393,11 @@ app.post('/tasks', utils.verifyToken, async (req, res) => {
             AktualneMiejsceWCyklu: 1,
             Powtarzalnosc
         })
-        for (let i = 1; i <= MieszkaniecWMieszkaniuID.length; i++) {
+
+        for (let i = 0; i < MieszkaniecWMieszkaniuID.length; i++) {
             await ops.insert(db.MIEJSCE_W_KOLEJCE_TABLE, {
-                Miejsce: i,
-                MieszkaniecWMieszkaniuID: MieszkaniecWMieszkaniuID[i - 1],
+                Miejsce: i + 1,
+                MieszkaniecWMieszkaniuID: MieszkaniecWMieszkaniuID[i],
                 PrzydzialID: resultPrzydzial.insertId
             })
         }
@@ -406,23 +408,61 @@ app.post('/tasks', utils.verifyToken, async (req, res) => {
 })
 /**
  * Update task data -- for task data update view, not for the frequency update 
- * I assume that task_id is Obowiazek_ID
- * DOESN'T WORK YET!
+ * I assume that task_id is Obowiazek_ID.
+ * Updateujemy tyle osob ile bylo na poczatku.
  */
-// TODO
+app.put('/tasks/:task_id', utils.verifyToken, async (req, res) => {
+    const {
+        Opis,
+        Powtarzalnosc,
+        MieszkaniecWMieszkaniuID,
+        Rozpoczecie
+    } = req.body
+
+    try {
+        await ops.update(db.OBOWIAZEK_TABLE, db.OBOWIAZEK_TABLE_ID, req.params.task_id, {
+            Opis
+        })
+
+        // Nie updatuje aktualnego miejsca w cyklu, niech zostanie takie jakie jest, podmieniam tylko osoby
+        await ops.update(db.PRZYDZIAL_TABLE, db.OBOWIAZEK_TABLE_ID, req.params.task_id, {
+            Powtarzalnosc,
+            Rozpoczecie
+        })
+
+        const getPrzydzial = await ops.getById(db.PRZYDZIAL_TABLE, db.OBOWIAZEK_TABLE_ID, req.params.task_id)
+
+        for (let i = 0; i < MieszkaniecWMieszkaniuID.length; i++) {
+            await ops.updateQueue(db.MIEJSCE_W_KOLEJCE_TABLE, db.PRZYDZIAL_TABLE_ID, i + 1, getPrzydzial[0].PrzydzialID, {
+                MieszkaniecWMieszkaniuID: MieszkaniecWMieszkaniuID[i]
+            })
+        }
+
+        res.sendStatus(200);
+    } catch (err) {
+        res.status(500).send(err)
+    }
+})
+
 
 /**
  * Update AktualneMiejsceWCyklu.
  * task_id means ObowiazekID.
+ * pay attention to url.
  */
-app.put('/tasks/:task_id', utils.verifyToken, async (req, res) => {
+app.put('/tasks/cycle/:task_id', utils.verifyToken, async (req, res) => {
     const {
         AktualneMiejsceWCyklu
     } = req.body
 
     try {
         const tasks = await ops.getAllocationForTask(req.params.task_id)
-
+        // if there is only one person assigned
+        if (tasks.length === 1) {
+            await ops.update(db.PRZYDZIAL_TABLE, db.PRZYDZIAL_TABLE_ID, tasks[0].PrzydzialID, {
+                AktualneMiejsceWCyklu: 1
+            })
+        }
         await ops.update(db.PRZYDZIAL_TABLE, db.PRZYDZIAL_TABLE_ID, tasks[0].PrzydzialID, {
             // this assures that the cycle is closed
             AktualneMiejsceWCyklu: (AktualneMiejsceWCyklu % tasks.length === 0) ? tasks.length : (AktualneMiejsceWCyklu % tasks.length)
@@ -437,7 +477,6 @@ app.put('/tasks/:task_id', utils.verifyToken, async (req, res) => {
 /**
  * Delete task.
  * task_id means ObowiazekID
- * Works, but needs improvement, because it doesn't return the right code, but an empty array.
  */
 app.delete('/tasks/:task_id', utils.verifyToken, async (req, res) => {
     try {
@@ -460,7 +499,6 @@ app.delete('/tasks/:task_id', utils.verifyToken, async (req, res) => {
     } catch (err) {
         res.status(500).send(err);
     }
-
 })
 
 //Users CRUD
@@ -504,19 +542,21 @@ app.post('/users', async (req, res) => {
             Email
         })
 
-        const token = jwt.sign({ id: insertId }, config.secretKey, {
+        const token = jwt.sign({
+            id: insertId
+        }, config.secretKey, {
             expiresIn: "30 days"
         })
 
         res.status(200)
-        res.send({ 
-            auth: true, 
+        res.send({
+            auth: true,
             token: token
         })
     } catch (err) {
         res.status(500).send(err)
     }
-    
+
 })
 
 /**
@@ -524,19 +564,19 @@ app.post('/users', async (req, res) => {
  */
 app.get('/tokenTest', utils.verifyToken, async (req, res) => {
     const token = req.headers['x-access-token']
-    if(!token)
+    if (!token)
         return res.status(401).send({
             auth: false,
             message: 'No token provided!'
         })
-    
+
     jwt.verify(token, config.secretKey, {}, (err, decoded) => {
-        if(err)
+        if (err)
             return res.status(500).send({
                 auth: false,
                 message: 'Failed to authenticate token'
             })
-        
+
         res.status(200).send(decoded)
     })
 })
@@ -554,19 +594,21 @@ app.post('/login', async (req, res) => {
     try {
         const user = await ops.getById(db.MIESZKANIEC_TABLE, db.MIESZKANIEC_TABLE_LOGIN, Login)
 
-        if(user.length === 0)
+        if (user.length === 0)
             return res.status(404).send({
                 auth: false,
                 message: "User not found"
             })
 
-        if(!utils.comparePasswords(Haslo, user[0].Haslo))
+        if (!utils.comparePasswords(Haslo, user[0].Haslo))
             return res.status(401).send({
                 auth: false,
                 message: "Incorrect password"
             })
 
-        const token = jwt.sign({ id: user[0].MieszkaniecID }, config.secretKey, {
+        const token = jwt.sign({
+            id: user[0].MieszkaniecID
+        }, config.secretKey, {
             expiresIn: "30 days"
         })
 
@@ -575,7 +617,7 @@ app.post('/login', async (req, res) => {
             token: token
         })
 
-    } catch(err) {
+    } catch (err) {
         res.status(500).send({
             auth: false,
             message: err
@@ -596,7 +638,7 @@ app.post('/apartments/join', utils.verifyToken, async (req, res) => {
     try {
         const resultMieszkanie = await ops.getById(db.MIESZKANIE_TABLE, db.MIESZKANIE_TABLE_KOD, KodDostepu)
 
-        if(resultMieszkanie.length === 0)
+        if (resultMieszkanie.length === 0)
             res.sendStatus(404)
 
 
@@ -604,7 +646,7 @@ app.post('/apartments/join', utils.verifyToken, async (req, res) => {
             MieszkaniecID: MieszkaniecID,
             MieszkanieID: resultMieszkanie[0].MieszkanieID
         })
-        
+
         res.status(200).send(resultMieszkanie)
 
     } catch (err) {

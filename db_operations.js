@@ -42,7 +42,7 @@ module.exports = {
     },
     update: async function (tableName, idColumnName, id, data) {
         return new Promise((resolve, reject) => {
-            const sql = `UPDATE ` + tableName + ` SET ? WHERE ` + idColumnName + ` = ?`
+            const sql = `UPDATE  ${tableName} SET ? WHERE ${idColumnName}  = ?`
             pool.query(sql, [data, id], (err, results) => {
                 if (err) {
                     console.error(err)
@@ -55,7 +55,7 @@ module.exports = {
     },
     deleteById: async function (tableName, idColumnName, id) {
         return new Promise((resolve, reject) => {
-            const sql = `DELETE FROM ` + tableName + ` WHERE ` + idColumnName + ` = ?`
+            const sql = `DELETE FROM ${tableName} WHERE ${idColumnName} = ?`
 
             pool.query(sql, id, (err, results) => {
                 if (err) {
@@ -121,11 +121,24 @@ module.exports = {
     },
     getAllocationForTask: async function (id) {
         return new Promise((resolve, reject) => {
-            const sql = `SELECT MiejsceWkolejce.PrzydzialID, Przydzial.AktualneMiejsceWCyklu, MiejsceWKolejce.Miejsce FROM MiejsceWKolejce ` +
-                `INNER JOIN Przydzial ON MiejsceWkolejce.PrzydzialID = Przydzial.PrzydzialID ` +
+            const sql = `SELECT MiejsceWKolejce.PrzydzialID, Przydzial.AktualneMiejsceWCyklu, MiejsceWKolejce.Miejsce FROM MiejsceWKolejce ` +
+                `INNER JOIN Przydzial ON MiejsceWKolejce.PrzydzialID = Przydzial.PrzydzialID ` +
                 `WHERE Przydzial.ObowiazekID = ?`
 
             pool.query(sql, id, (err, results) => {
+                if (err) {
+                    console.error(err)
+                    reject(err)
+                } else {
+                    resolve(results)
+                }
+            })
+        })
+    },
+    updateQueue: async function (tableName, idColumnName, name, id, data) {
+        return new Promise((resolve, reject) => {
+            const sql = `UPDATE ${tableName} SET ? WHERE ${idColumnName} = ? AND Miejsce = ?`
+            pool.query(sql, [data, id, name], (err, results) => {
                 if (err) {
                     console.error(err)
                     reject(err)
