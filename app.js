@@ -551,7 +551,9 @@ app.post('/users', async (req, res) => {
         res.status(200)
         res.send({
             auth: true,
-            token: token
+            token: token,
+            id: insertId,
+            message: null
         })
     } catch (err) {
         res.status(500).send(err)
@@ -567,6 +569,8 @@ app.get('/tokenTest', utils.verifyToken, async (req, res) => {
     if (!token)
         return res.status(401).send({
             auth: false,
+            token: null,
+            id: null,
             message: 'No token provided!'
         })
 
@@ -574,6 +578,8 @@ app.get('/tokenTest', utils.verifyToken, async (req, res) => {
         if (err)
             return res.status(500).send({
                 auth: false,
+                token: null,
+                id: null,
                 message: 'Failed to authenticate token'
             })
 
@@ -597,12 +603,16 @@ app.post('/login', async (req, res) => {
         if (user.length === 0)
             return res.status(404).send({
                 auth: false,
+                token: null,
+                id: null,
                 message: "User not found"
             })
 
         if (!utils.comparePasswords(Haslo, user[0].Haslo))
             return res.status(401).send({
                 auth: false,
+                token: null,
+                id: null,
                 message: "Incorrect password"
             })
 
@@ -614,12 +624,16 @@ app.post('/login', async (req, res) => {
 
         res.send({
             auth: true,
-            token: token
+            token: token,
+            id: user[0].MieszkaniecID,
+            message: null
         })
 
     } catch (err) {
         res.status(500).send({
             auth: false,
+            token: null,
+            id: null,
             message: err
         })
     }
