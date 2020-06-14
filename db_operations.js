@@ -148,4 +148,30 @@ module.exports = {
             })
         })
     },
+    getApartmentsForUser: async function(userId) {
+        return new Promise((resolve, reject) => {
+            const sql = `SELECT M.MieszkanieID, Nazwa, KodDostepu FROM MieszkaniecWMieszkaniu MWM LEFT JOIN Mieszkanie M ON MWM.MieszkanieID = M.MieszkanieID WHERE MieszkaniecID = ?`
+            pool.query(sql, [userId], (err, results) => {
+                if (err) {
+                    console.error(err)
+                    reject(err)
+                } else {
+                    resolve(results)
+                }
+            })
+        })
+    },
+    leaveApartment: async function(userId, aptId) {
+        return new Promise((resolve, reject) => {
+            const sql = `DELETE FROM MieszkaniecWMieszkaniu WHERE MieszkaniecID = ? AND MieszkanieID = ?`
+            pool.query(sql, [userId, aptId], (err, results) => {
+                if (err) {
+                    console.error(err)
+                    reject(err)
+                } else {
+                    resolve(results)
+                }
+            })
+        })
+    }
 }

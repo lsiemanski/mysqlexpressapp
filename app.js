@@ -667,3 +667,39 @@ app.post('/apartments/join', utils.verifyToken, async (req, res) => {
         res.status(500).send(err)
     }
 })
+
+/**
+ * Get all apartments for user
+ */
+app.get('/users/:user_id/apartments', utils.verifyToken, async (req, res) => {
+    try {
+        const apartments = await ops.getApartmentsForUser(req.params.user_id)
+
+        if (apartments) {
+            res.send({
+                data: apartments
+            });
+        } else {
+            res.sendStatus(404);
+        }
+    } catch (err) {
+        res.status(500).send(err)
+    }
+})
+
+/**
+ * Leave apartment
+ */
+app.delete('/apartments/:apt_id/leave/:user_id', utils.verifyToken, async (req, res) => {
+    try {
+        const leaveApartment = await ops.leaveApartment(req.params.user_id, req.params.apt_id)
+
+        if(!leaveApartment.affectedRows) {
+            res.sendStatus(404);
+        }
+
+        res.sendStatus(200);
+    } catch (err) {
+        res.status(500).send(err);
+    }
+})
